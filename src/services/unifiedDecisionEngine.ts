@@ -25,11 +25,16 @@ import {
 } from './dynamicHypothesisEngine';
 
 export type ForensicVerdict =
-  | 'LIKELY_FALSE_POSITIVE'
+  | 'CONFIRMED_COMPROMISE'
+  | 'POTENTIAL_COMPROMISE'
+  | 'SUSPICIOUS_ACTIVITY'
+  | 'DEFENSE_EVASION_INDICATOR'
   | 'BLOCKED_ATTACK_ATTEMPT'
   | 'SUSPICIOUS_ANOMALY'
-  | 'POTENTIAL_COMPROMISE'
   | 'AUTHORIZED_ACTIVITY'
+  | 'OBSERVED_SECURITY_EVENT'
+  | 'BENIGN_EXPECTED'
+  | 'LIKELY_FALSE_POSITIVE'
   | 'UNKNOWN'
   | 'NOT_ASSESSED';
 
@@ -321,23 +326,23 @@ export function evaluateUnifiedDecision(params: UnifiedDecisionParams): UnifiedD
       }
     } else if (winDetails.eventId === 4624) {
       attackVector = 'WINDOWS_4624';
-      verdict = 'AUTHORIZED_ACTIVITY';
+      verdict = 'OBSERVED_SECURITY_EVENT';
       confidence = 90;
       confidenceLabel = winDetails.logonType === 2 && winDetails.sourceIp && winDetails.sourceIp !== '-'
-        ? 'Yerel İnteraktif Oturum (Kaynak IP Çelişkili)'
-        : (winDetails.logonType === 10 ? 'Uzak Masaüstü Oturumu' : 'Meşru Oturum Akışı');
+        ? 'Yerel İnteraktif Oturum Gözlendi (Kaynak IP Çelişkili)'
+        : (winDetails.logonType === 10 ? 'Uzak Masaüstü Oturumu Gözlendi' : 'Başarılı Oturum Açma Gözlendi');
       threatTitle = winDetails.logonType === 10
-        ? 'Uzak Masaüstü Oturumu: Windows Event 4624 - Başarılı RDP Girişi (Type 10)'
+        ? 'Gözlemlenen Olay: Windows Event 4624 - Başarılı RDP Girişi (Type 10)'
         : (winDetails.logonType === 2
-          ? 'Yerel Oturum: Windows Event 4624 - Başarılı İnteraktif Giriş (Type 2)'
-          : 'Normal Güvenlik Olayı: Windows Event 4624 - Başarılı Oturum Açma');
+          ? 'Gözlemlenen Olay: Windows Event 4624 - Başarılı İnteraktif Giriş (Type 2)'
+          : 'Gözlemlenen Güvenlik Olayı: Windows Event 4624 - Başarılı Oturum Açma');
 
       if (winDetails.logonType === 2 && winDetails.sourceIp && winDetails.sourceIp !== '-') {
         summaryReason = `Gözlenen Kanıt (Observed): Logon Type 2 (Yerel İnteraktif) başarılı oturum açma (Kullanıcı: "${winDetails.targetUser || 'Kullanıcı'}", Host: "${winDetails.computer || targetHost || 'Windows Endpoint'}"). Yorum (Interpretation): Yerel konsol/klavye interaktif oturumu başlatılmıştır. Belirsizlik (Uncertainty): Telemetride ağ kaynak IP adresi (${winDetails.sourceIp}) yer almaktadır; yerel interaktif oturum semantiği ile harici ağ IP'si çelişmektedir (Field Observation: UNCERTAIN). Bu IP adresi uzaktan kimlik doğrulama korelasyonuna doğrudan dahil edilemez (correlationEligible = false).`;
       } else if (winDetails.logonType === 10) {
-        summaryReason = `Gözlenen Kanıt (Observed): Hedef sistemde RDP (Logon Type 10) üzerinden "${winDetails.targetUser || 'Kullanıcı'}" hesabı ile başarılı oturum açılmıştır. Yorum (Interpretation): RDP standart yönetim protokolüdür. Belirsizlik (Uncertainty): Tek başına saldırı veya ihlal kanıtı değildir; yetkili erişim bağlamında değerlendirilmelidir.`;
+        summaryReason = `Gözlenen Kanıt (Observed): Hedef sistemde RDP (Logon Type 10) üzerinden "${winDetails.targetUser || 'Kullanıcı'}" hesabı ile başarılı oturum açılmıştır. Yorum (Interpretation): RDP standart yönetim protokolüdür. Belirsizlik (Uncertainty): Tek başına saldırı veya yetkili meşruiyet kanıtı değildir (SUCCESSFUL_LOGON_OBSERVED); yetkili erişim bağlamında değerlendirilmelidir.`;
       } else {
-        summaryReason = `Gözlenen Kanıt (Observed): Hedef sistemde başarılı kimlik doğrulaması (${winDetails.logonTypeDesc}) tamamlanmıştır (Kullanıcı: "${winDetails.targetUser || 'Kullanıcı'}"). Yorum (Interpretation): Oturum başlatma işlemi tamamlanmıştır. Belirsizlik (Uncertainty): Tek başına saldırı kanıtı değildir.`;
+        summaryReason = `Gözlenen Kanıt (Observed): Hedef sistemde başarılı kimlik doğrulaması (${winDetails.logonTypeDesc}) tamamlanmıştır (Kullanıcı: "${winDetails.targetUser || 'Kullanıcı'}"). Yorum (Interpretation): Oturum başlatma işlemi tamamlanmıştır (SUCCESSFUL_LOGON_OBSERVED). Belirsizlik (Uncertainty): Tek başına saldırı veya yetkili meşruiyet kanıtı değildir.`;
       }
 
       deepForensics.push(
@@ -349,11 +354,11 @@ export function evaluateUnifiedDecision(params: UnifiedDecisionParams): UnifiedD
       );
     } else if (winDetails.eventId === 4672) {
       attackVector = 'WINDOWS_4672';
-      verdict = 'AUTHORIZED_ACTIVITY';
+      verdict = 'OBSERVED_SECURITY_EVENT';
       confidence = 88;
       confidenceLabel = 'İdari Ayrıcalık Gözlendi (Bağlam Gerekli)';
-      threatTitle = 'Windows Event 4672: Özel Ayrıcalık Atandı (Observed Admin Privilege)';
-      summaryReason = `Gözlenen Kanıt (Observed Evidence): Oturum açılışında özel güvenlik hakları (SeSecurityPrivilege vb.) atanması kaydedilmiştir (Kullanıcı: "${winDetails.targetUser || winDetails.subjectUser || 'Kullanıcı'}"). Yorum (Interpretation): İdari ayrıcalık ataması gözlemlenmiştir (OBSERVED ADMINISTRATIVE PRIVILEGE ASSIGNMENT). Belirsizlik/Bağlam (Uncertainty): Tek başına yetki yükseltme (Privilege Escalation) kanıtı değildir; yetkili hesapların rutin oturum açmasında standart işletim sistemi davranışıdır. Güvenlik etkisi oturum içi eylemlerin bağlamını gerektirir (NOT DETERMINED / CONTEXT REQUIRED).`;
+      threatTitle = 'Windows Event 4672: Özel Ayrıcalık Atandı (Special Privileges Assigned)';
+      summaryReason = `Gözlenen Kanıt (Observed Evidence): Oturum açılışında özel güvenlik hakları (SeSecurityPrivilege vb.) atanması kaydedilmiştir (Kullanıcı: "${winDetails.targetUser || winDetails.subjectUser || 'Kullanıcı'}"). Yorum (Interpretation): İdari ayrıcalık ataması gözlemlenmiştir (SPECIAL_PRIVILEGES_ASSIGNED). Belirsizlik/Bağlam (Uncertainty): Tek başına yetki yükseltme (Privilege Escalation) veya meşruiyet kanıtı değildir. Güvenlik etkisi oturum içi eylemlerin bağlamını gerektirir.`;
 
       deepForensics.push(
         `Olay Kimliği: Event ID 4672 - ${winDetails.eventName}`,
@@ -1037,9 +1042,25 @@ export function evaluateUnifiedDecision(params: UnifiedDecisionParams): UnifiedD
       iconBgClasses: 'bg-rose-600 text-white',
       iconType: 'shieldAlert',
     };
+  } else if (verdict === 'OBSERVED_SECURITY_EVENT') {
+    verdictBadge = {
+      text: 'GÖZLEMLENEN GÜVENLİK OLAYI',
+      badgeClasses: 'bg-blue-100 text-blue-900 border border-blue-300',
+      cardClasses: 'bg-blue-50/70 border-blue-200',
+      iconBgClasses: 'bg-blue-600 text-white',
+      iconType: 'shield',
+    };
+  } else if ((verdict as ForensicVerdict) === 'BENIGN_EXPECTED') {
+    verdictBadge = {
+      text: 'BEKLENEN / MEŞRU ETKİNLİK',
+      badgeClasses: 'bg-slate-100 text-slate-800 border border-slate-300',
+      cardClasses: 'bg-slate-50 border-slate-200',
+      iconBgClasses: 'bg-slate-600 text-white',
+      iconType: 'shieldCheck',
+    };
   } else if (verdict === 'AUTHORIZED_ACTIVITY') {
     verdictBadge = {
-      text: 'MEŞRU / BEKLENEN ETKİNLİK',
+      text: 'GÖZLEMLENEN ETKİNLİK',
       badgeClasses: 'bg-slate-100 text-slate-800 border border-slate-300',
       cardClasses: 'bg-slate-50 border-slate-200',
       iconBgClasses: 'bg-slate-600 text-white',

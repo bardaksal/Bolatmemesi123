@@ -181,7 +181,7 @@ export function generateFallbackSocAnalysis(params: {
   } = params;
 
   const primaryEntity = selectedEntity || highRiskEntities[0] || null;
-  const ip = targetIp || primaryEntity?.ip_adresi || (highRiskEntities[0]?.ip_adresi ?? '194.26.29.112');
+  const ip = targetIp || primaryEntity?.ip_adresi || (highRiskEntities[0]?.ip_adresi ?? null);
   const server = primaryEntity?.sunucu_ismi || 'Web & Uygulama Sunucuları';
   const score = primaryEntity?.risk_puani ?? 85;
 
@@ -192,22 +192,23 @@ export function generateFallbackSocAnalysis(params: {
   else threatLevel = 'DÜŞÜK';
 
   const transferMb = primaryEntity?.basarili_transfer_mb ?? 
-    (reportSummary?.toplam_transfer_gb ? (parseFloat(reportSummary.toplam_transfer_gb) * 1024).toFixed(1) : '18.4');
+    (reportSummary?.toplam_transfer_gb ? (parseFloat(reportSummary.toplam_transfer_gb) * 1024).toFixed(1) : null);
 
-  const executiveSummary = `Gemini 3.8 Flash Akıl Yürütme ve SOC L3 Adli İnceleme Merkezi tarafından yapılan telemetri analizinde, hedef sistem ve servis altyapılarına yönelik ${ip} kaynaklı organize şüpheli aktiviteler tespit edilmiştir. Değerlendirilen tehdit seviyesi '${threatLevel}' (Risk Skoru: ${score}/100) olup; ${server} sunucuları üzerinde yetkisiz keşif, istismar girişimleri ve veri transferi kaydedilmiştir. Acil izolasyon ve kimlik denetimi önerilmektedir.`;
+  const entityLabel = ip ? `${ip} kaynaklı` : 'telemetride gözlenen';
+  const executiveSummary = `Gemini 3.8 Flash Akıl Yürütme ve SOC L3 Adli İnceleme Merkezi tarafından yapılan telemetri analizinde, hedef sistem ve servis altyapılarına yönelik ${entityLabel} organize şüpheli aktiviteler tespit edilmiştir. Değerlendirilen tehdit seviyesi '${threatLevel}' (Risk Skoru: ${score}/100) olup; ${server} sunucuları üzerinde yetkisiz keşif, istismar girişimleri ve anomaliler kaydedilmiştir. Acil izolasyon ve kimlik denetimi önerilmektedir.`;
 
   const attackNarrative = `### 🎯 Siber Saldırı Harekât Zinciri & Gemini 3.8 Flash Akıl Yürütme:
-1. **Keşif ve Zafiyet Tarama (Reconnaissance):** Kaynak ${ip}, web sunucuları üzerinde otomatik araç ve botlar aracılığıyla hassas yönetim dizinleri ve açık servis portlarını taramıştır.
+1. **Keşif ve Zafiyet Tarama (Reconnaissance):** ${ip ? `Kaynak ${ip}` : 'Kaynak adres(ler)'}, web sunucuları üzerinde otomatik araç ve botlar aracılığıyla hassas yönetim dizinleri ve açık servis portlarını taramıştır.
 2. **Yetkilendirme ve Kaba Kuvvet (Credential Access):** Başarısız kimlik doğrulama denemeleri ve 401/403 yetki anomalileri gözlemlenmiş, servis hesapları hedeflenmiştir.
 3. **Kalıcılık ve Webshell Denemesi (Persistence & Defense Evasion):** Şüpheli POST istekleri ve komut parametreleri üzerinden web sunucusuna zararlı betik yükleme girişimleri analiz edilmiştir.
-4. **Veri Transferi / Egress Trafiği (Exfiltration):** Hedef sistemlerden dış ağa ${transferMb} MB boyutunda HTTP 200 yanıtlarıyla veri aktarımı gerçekleşmiştir.`;
+4. **Veri Transferi / Egress Trafiği (Exfiltration):** ${transferMb !== null ? `Hedef sistemlerden dış ağa ${transferMb} MB boyutunda veri aktarımı gerçekleşmiştir.` : 'Veri transferi boyutu telemetride yer almadığı için hesaplanamamıştır (NOT_COMPUTED).'}`;
 
   const mitreAttacks = [
     {
       tactic: 'Initial Access / Reconnaissance',
       techniqueId: 'T1190 / T1595',
       techniqueName: 'Exploit Public-Facing Application & Active Scanning',
-      evidence: `${ip} kaynaklı hedef sunuculara (${server}) yönelik ${primaryEntity?.toplam_istek || 'çok sayıda'} istek ve tarama aktivitesi.`,
+      evidence: `${ip || 'Şüpheli IP'} kaynaklı hedef sunuculara (${server}) yönelik ${primaryEntity?.toplam_istek || 'çok sayıda'} istek ve tarama aktivitesi.`,
     },
     {
       tactic: 'Credential Access',
@@ -227,27 +228,29 @@ export function generateFallbackSocAnalysis(params: {
       tactic: 'Exfiltration',
       techniqueId: 'T1041',
       techniqueName: 'Exfiltration Over C2 / Web Channel',
-      evidence: `Dış IP adresine aktarılan ${transferMb} MB başarılı veri transferi ve anormal yanıt boyutları.`,
+      evidence: transferMb !== null
+        ? `Dış IP adresine aktarılan ${transferMb} MB veri transferi.`
+        : 'Veri transferi telemetrisi hesaplanamamıştır (NOT_COMPUTED).',
     },
   ];
 
-  const threatActors = (highRiskEntities.length > 0 ? highRiskEntities : [
+  const threatActors = (highRiskEntities.length > 0 ? highRiskEntities : (ip ? [
     {
       ip_adresi: ip,
       risk_puani: score,
       risk_seviyesi: threatLevel,
-      risk_gerekcesi: 'Aşamalı saldırı zinciri, anormal veri transferi ve sunucu hata artışı',
+      risk_gerekcesi: 'Aşamalı saldırı zinciri ve sunucu hata artışı',
       sunucu_ismi: server,
-      basarili_transfer_mb: transferMb,
+      basarili_transfer_mb: transferMb || 'NOT_COMPUTED',
     }
-  ]).slice(0, 5).map((h: any) => ({
+  ] : [])).slice(0, 5).map((h: any) => ({
     ip: h.ip_adresi,
     riskScore: h.risk_puani || 80,
     threatLevel: h.risk_seviyesi || 'YÜKSEK',
     reason: h.risk_gerekcesi || 'Kritik eşik değerleri aşan şüpheli aktivite',
     targetedServers: h.sunucu_ismi || server,
-    transferredMb: parseFloat(h.basarili_transfer_mb || '0') || 10,
-    attackStage: 'İstismar & Veri Transferi',
+    transferredMb: typeof h.basarili_transfer_mb === 'number' ? h.basarili_transfer_mb : parseFloat(h.basarili_transfer_mb || '0') || null,
+    attackStage: 'İstismar & Aktivite',
   }));
 
   const technicalDetails = `### 🔬 Derin Adli Bulgular (Gemini 3.8 Flash Forensic Deep Dive):

@@ -1,11 +1,16 @@
 import { ParserDiagnosticReport } from './quickTriageHelper';
 
 export type ForensicVerdict =
-  | 'LIKELY_FALSE_POSITIVE'
+  | 'CONFIRMED_COMPROMISE'
+  | 'POTENTIAL_COMPROMISE'
+  | 'SUSPICIOUS_ACTIVITY'
+  | 'DEFENSE_EVASION_INDICATOR'
   | 'BLOCKED_ATTACK_ATTEMPT'
   | 'SUSPICIOUS_ANOMALY'
-  | 'POTENTIAL_COMPROMISE'
   | 'AUTHORIZED_ACTIVITY'
+  | 'OBSERVED_SECURITY_EVENT'
+  | 'BENIGN_EXPECTED'
+  | 'LIKELY_FALSE_POSITIVE'
   | 'UNKNOWN'
   | 'NOT_ASSESSED';
 
@@ -243,7 +248,7 @@ export function runSecondaryCorrelation(
     if (ev.verdict === 'POTENTIAL_COMPROMISE') breakdown.critical++;
     else if (ev.verdict === 'BLOCKED_ATTACK_ATTEMPT') breakdown.suspicious++;
     else if (ev.verdict === 'SUSPICIOUS_ANOMALY') breakdown.anomaly++;
-    else if (ev.verdict === 'AUTHORIZED_ACTIVITY') breakdown.benign++;
+    else if (ev.verdict === 'AUTHORIZED_ACTIVITY' || ev.verdict === 'OBSERVED_SECURITY_EVENT' || ev.verdict === 'BENIGN_EXPECTED') breakdown.benign++;
     else if (ev.verdict === 'LIKELY_FALSE_POSITIVE') breakdown.falsePositive++;
     else breakdown.unknown++;
   });

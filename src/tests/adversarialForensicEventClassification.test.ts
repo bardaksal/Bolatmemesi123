@@ -26,7 +26,7 @@ const resRdp = evaluateUnifiedDecision({
   parsedLog: parsedRdp,
   sourceType: 'TEXT_LOG',
 });
-assert.strictEqual(resRdp.verdict, 'AUTHORIZED_ACTIVITY', 'Test 1.1: Başarılı RDP oturumu (4624 Type 10) tek başına şüpheli üretmez, AUTHORIZED_ACTIVITY olmalıdır');
+assert.strictEqual(resRdp.verdict, 'OBSERVED_SECURITY_EVENT', 'Test 1.1: Başarılı RDP oturumu (4624 Type 10) tek başına şüpheli üretmez, OBSERVED_SECURITY_EVENT olmalıdır');
 assert.strictEqual(resRdp.winDetails.mitreTechnique, undefined, 'Test 1.2: Meşru RDP oturumuna otomatik MITRE saldırı tekniği atanmaz');
 
 // 1.2: 4672 Özel Ayrıcalık Ataması tek başına Yetki Yükseltme değildir
@@ -41,7 +41,7 @@ const resPriv = evaluateUnifiedDecision({
   parsedLog: parsedPriv,
   sourceType: 'TEXT_LOG',
 });
-assert.strictEqual(resPriv.verdict, 'AUTHORIZED_ACTIVITY', 'Test 1.3: Event 4672 tek başına yetki yükseltme değildir, AUTHORIZED_ACTIVITY olmalıdır');
+assert.strictEqual(resPriv.verdict, 'OBSERVED_SECURITY_EVENT', 'Test 1.3: Event 4672 tek başına yetki yükseltme değildir, OBSERVED_SECURITY_EVENT olmalıdır');
 assert.strictEqual(resPriv.winDetails.mitreTechnique, undefined, 'Test 1.4: Event 4672 için otomatik MITRE saldırı tekniği atanmaz');
 
 // 1.3: 4688 whoami.exe veya CorpInventoryUpdater.exe tek başına saldırı değildir

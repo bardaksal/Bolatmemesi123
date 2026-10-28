@@ -6,11 +6,7 @@ const STORAGE_KEY = 'soc_log_lens_allowlist';
 export const DEFAULT_ALLOWLIST_DATA: AllowlistData = {
   ips: [],
   cidrs: [],
-  service_accounts: [
-    'NT AUTHORITY\\SYSTEM',
-    'LOCAL SERVICE',
-    'NETWORK SERVICE',
-  ],
+  service_accounts: [], // INVARIANT: SYSTEM, LOCAL SERVICE, NETWORK SERVICE are NEVER automatically trusted without full contextual scope
   trusted_servers: [],
   scoped_rules: [],
 };
@@ -150,6 +146,11 @@ export function isItemAllowed(
   }
   if (account && account !== '-' && account !== '') {
     const acc = account.trim().toLowerCase();
+    // GLOBAL INVARIANT: SYSTEM, LOCAL SERVICE, and NETWORK SERVICE can NEVER be globally allowed
+    // trusted = false; Meşruluk identity + process + path + hash + time ile belirlenmelidir.
+    if (acc === 'system' || acc === 'nt authority\\system' || acc === 'local service' || acc === 'network service') {
+      return false;
+    }
     if (data.service_accounts.some(s => s.trim().toLowerCase() === acc)) return true;
   }
   if (server && server !== '-' && server !== '') {

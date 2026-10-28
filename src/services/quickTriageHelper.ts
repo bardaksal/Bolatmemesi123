@@ -261,17 +261,23 @@ export function segmentRawTextIntoEventsWithDiagnostics(rawText: string): Parser
 
   // 1. XML Windows Event logs (<Event>...</Event>)
   if (trimmed.includes('<Event') && trimmed.includes('</Event>')) {
-    const xmlMatches = Array.from(trimmed.matchAll(/<Event[\s\S]*?<\/Event>/gi));
+    const xmlMatches = Array.from(rawText.matchAll(/<Event[\s\S]*?<\/Event>/gi));
     if (xmlMatches && xmlMatches.length > 0) {
       const failures: ParserFailureDetail[] = [];
       const eventBoundaries = xmlMatches.map((m, idx) => {
         const text = m[0].trim();
+        const matchIndex = m.index ?? 0;
+        const textBefore = rawText.substring(0, matchIndex);
+        const startLine = (textBefore.match(/\n/g) || []).length + 1;
+        const eventLines = (m[0].match(/\n/g) || []).length;
+        const endLine = startLine + eventLines;
+
         const cont = auditEventContamination(text);
         if (cont.hasContamination) {
           failures.push({
             check: 'Cross-Event Contamination',
             reason: cont.details.join('; '),
-            lineNumbers: [idx + 1],
+            lineNumbers: [startLine],
             snippet: text.slice(0, 100),
           });
         }
@@ -279,8 +285,8 @@ export function segmentRawTextIntoEventsWithDiagnostics(rawText: string): Parser
         const timeMatch = text.match(/SystemTime=["']?([^"'>\s]+)["']?/i);
         return {
           eventIndex: idx + 1,
-          rawStartLine: 1,
-          rawEndLine: rawLinesCount,
+          rawStartLine: startLine,
+          rawEndLine: endLine,
           rawText: text,
           rawTextHash: computeTextHash(text),
           eventId: idMatch ? parseInt(idMatch[1], 10) : null,
@@ -688,13 +694,13 @@ export function extractWindowsDetails(
     }
   }
 
-  // 5. Computer (Host) - STRICT: must come ONLY from this event's Computer/ComputerName fields
+  // 5. Computer (Host) - STRICT: must come ONLY from this event's Computer/Host fields
   let computer = '';
-  const compMatch = text.match(/(?:Computer\s*Name|ComputerName|Computer|Bilgisayar)[:=\s]+["']?([^\s"',;\r\n]+)/i);
+  const compMatch = text.match(/(?:Computer\s*Name|ComputerName|Computer|Bilgisayar|Host)[:=\s]+["']?([^\s"',;\r\n]+)/i);
   if (compMatch && compMatch[1] && compMatch[1].trim() !== '-') {
     computer = compMatch[1].trim();
-  } else if (kvDict.computer || kvDict.computername) {
-    computer = (kvDict.computer || kvDict.computername).trim();
+  } else if (kvDict.computer || kvDict.computername || kvDict.host) {
+    computer = (kvDict.computer || kvDict.computername || kvDict.host).trim();
   }
 
   // 6. Workstation - Applicable to 4624/4625, PROHIBITED on 4688, 7045, 1102
