@@ -1,0 +1,6 @@
+{
+  "summary":  "Gemini modellerinin ana ekranda log yapıştırıldığında doğrudan arka planda çalışmasını sağlayan uygulama planı. Log yapıştırma akışı doğrudan Gemini semantik analiz API'sine bağlanacak, sonuçlar risk kuyruğuna ve adli rapora aktarılacak, fazladan görsel gösterge eklenmeden arka planda çalışacaktır.",
+  "updatedAt":  "2026-10-23T14:29:54.536342908Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}

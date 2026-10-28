@@ -1,0 +1,6 @@
+{
+  "name": "SOC Log Lens - SIEM & Threat Hunting",
+  "description": "DuckDB analitik motoru ile çoklu log birleştirme, günler arası saldırı korelasyonu, webshell ve veri sızdırma tespit platformu.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
